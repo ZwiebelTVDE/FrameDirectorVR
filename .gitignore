@@ -1,0 +1,11 @@
+# Godot 4
+.godot/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Editor
+.vs/
+.idea/
