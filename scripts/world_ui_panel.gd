@@ -16,6 +16,7 @@ func setup(ui: Control, size: Vector2 = Vector2(1.2, 0.75)) -> void:
 	viewport.transparent_bg = true
 	viewport.handle_input_locally = true
 	viewport.gui_embed_subwindows = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	viewport.add_child(ui)
 	ui.set_anchors_preset(Control.PRESET_FULL_RECT)
 	ui.custom_minimum_size = Vector2(viewport.size)

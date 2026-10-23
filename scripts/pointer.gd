@@ -52,6 +52,8 @@ func setup(controller: XRController3D) -> void:
 func _physics_process(_delta: float) -> void:
 	if _controller == null:
 		return
+	if grabbed_screen and not is_instance_valid(grabbed_screen):
+		grabbed_screen = null
 	if grabbed_screen:
 		grabbed_screen.global_transform = _controller.global_transform * _grab_offset
 		_update_beam(0.15, true)

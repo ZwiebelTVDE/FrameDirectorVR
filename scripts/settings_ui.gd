@@ -3,7 +3,8 @@ extends Control
 
 signal add_requested
 signal remove_requested(channel: CaptureChannelSettings)
-signal channel_changed(channel: CaptureChannelSettings)
+## reconnect_source is false for cosmetic edits (name, visibility).
+signal channel_changed(channel: CaptureChannelSettings, reconnect_source: bool)
 signal quit_requested
 
 var stage: CaptureStage
@@ -92,7 +93,7 @@ func _make_card(channel: CaptureChannelSettings, devices: Array[Dictionary]) -> 
 	name_edit.placeholder_text = "Input name"
 	name_edit.text_changed.connect(func(v: String):
 		channel.display_name = v
-		channel_changed.emit(channel)
+		channel_changed.emit(channel, false)
 	)
 	header.add_child(name_edit)
 
@@ -101,7 +102,7 @@ func _make_card(channel: CaptureChannelSettings, devices: Array[Dictionary]) -> 
 	visible_toggle.button_pressed = channel.visible
 	visible_toggle.toggled.connect(func(on: bool):
 		channel.visible = on
-		channel_changed.emit(channel)
+		channel_changed.emit(channel, false)
 	)
 	header.add_child(visible_toggle)
 
@@ -116,7 +117,7 @@ func _make_card(channel: CaptureChannelSettings, devices: Array[Dictionary]) -> 
 	signal_box.select(channel.signal_kind)
 	signal_box.item_selected.connect(func(idx: int):
 		channel.signal_kind = signal_box.get_item_id(idx) as CaptureChannelSettings.SignalKind
-		channel_changed.emit(channel)
+		channel_changed.emit(channel, true)
 	)
 	grid.add_child(signal_box)
 
@@ -131,7 +132,7 @@ func _make_card(channel: CaptureChannelSettings, devices: Array[Dictionary]) -> 
 		var res: Vector2i = CaptureChannelSettings.RESOLUTIONS[idx]
 		channel.width = res.x
 		channel.height = res.y
-		channel_changed.emit(channel)
+		channel_changed.emit(channel, true)
 	)
 	grid.add_child(res_box)
 
@@ -144,31 +145,59 @@ func _make_card(channel: CaptureChannelSettings, devices: Array[Dictionary]) -> 
 			fps_box.select(i)
 	fps_box.item_selected.connect(func(idx: int):
 		channel.framerate = fps_box.get_item_id(idx)
-		channel_changed.emit(channel)
+		channel_changed.emit(channel, true)
 	)
 	grid.add_child(fps_box)
 
 	_add_label(grid, "Capture device")
 	var device_box := OptionButton.new()
-	device_box.add_item("Simulated test pattern", 1000)
+	device_box.add_item("Simulated test pattern")
+	device_box.set_item_metadata(0, {})
 	var selected := 0
-	for i in devices.size():
-		var device: Dictionary = devices[i]
-		device_box.add_item("%d — %s" % [device.id, device.name], int(device.id))
-		if int(device.id) == channel.device_id and not channel.use_simulated_feed:
-			selected = i + 1
+	var found := false
+	for device in devices:
+		device_box.add_item(String(device.name))
+		var idx := device_box.item_count - 1
+		device_box.set_item_metadata(idx, device)
+		if not channel.use_simulated_feed and not found:
+			if (channel.device_name != "" and device.name == channel.device_name) \
+					or (channel.device_name == "" and int(device.id) == channel.device_id):
+				selected = idx
+				found = true
+	if not channel.use_simulated_feed and not found:
+		# Keep the saved device visible even while it's unplugged.
+		var missing_name := channel.device_name if channel.device_name != "" else "Device %d" % channel.device_id
+		device_box.add_item("%s (not connected)" % missing_name)
+		selected = device_box.item_count - 1
+		device_box.set_item_metadata(selected, {"id": channel.device_id, "name": channel.device_name})
 	device_box.select(selected)
 	device_box.item_selected.connect(func(idx: int):
-		var id := device_box.get_item_id(idx)
-		if id >= 1000:
-			channel.device_id = -1
+		var device: Dictionary = device_box.get_item_metadata(idx)
+		if device.is_empty():
 			channel.use_simulated_feed = true
 		else:
-			channel.device_id = id
+			channel.device_id = int(device.id)
+			channel.device_name = String(device.name)
 			channel.use_simulated_feed = false
-		channel_changed.emit(channel)
+		channel_changed.emit(channel, true)
 	)
 	grid.add_child(device_box)
+
+	_add_label(grid, "Picture")
+	var flip := CheckBox.new()
+	flip.text = "Flip vertically"
+	flip.tooltip_text = "Some capture drivers deliver frames upside down."
+	flip.button_pressed = channel.flip_vertical
+	flip.toggled.connect(func(on: bool):
+		channel.flip_vertical = on
+		channel_changed.emit(channel, true)
+	)
+	grid.add_child(flip)
+
+	var status := Label.new()
+	status.add_theme_color_override("font_color", Color(0.42, 0.38, 0.34))
+	status.text = _status_for(channel)
+	box.add_child(status)
 
 	var footer := HBoxContainer.new()
 	box.add_child(footer)
@@ -180,7 +209,7 @@ func _make_card(channel: CaptureChannelSettings, devices: Array[Dictionary]) -> 
 	channel_spin.value_changed.connect(func(v: float):
 		channel.channel_number = int(v)
 		badge.text = "CH %d" % channel.channel_number
-		channel_changed.emit(channel)
+		channel_changed.emit(channel, false)
 	)
 	footer.add_child(channel_spin)
 	var spacer := Control.new()
@@ -191,6 +220,14 @@ func _make_card(channel: CaptureChannelSettings, devices: Array[Dictionary]) -> 
 	remove.pressed.connect(func(): remove_requested.emit(channel))
 	footer.add_child(remove)
 	return card
+
+func _status_for(channel: CaptureChannelSettings) -> String:
+	if stage == null:
+		return ""
+	for feed in stage.feeds:
+		if feed.settings == channel:
+			return feed.status_text
+	return ""
 
 func _add_label(parent: Control, text: String) -> void:
 	var label := Label.new()

@@ -19,6 +19,10 @@ const FRAMERATES: Array[int] = [24, 25, 30, 50, 60]
 @export var height: int = 1080
 @export var framerate: int = 60
 @export var device_id: int = -1
+## Name of the capture device. Feed ids can change between runs or when a card
+## is re-plugged, so the name is what we match on when reconnecting.
+@export var device_name: String = ""
+@export var flip_vertical: bool = false
 @export var use_simulated_feed: bool = true
 @export var transform: Transform3D = Transform3D.IDENTITY
 @export var visible: bool = true
@@ -32,6 +36,8 @@ func to_dict() -> Dictionary:
 		"height": height,
 		"framerate": framerate,
 		"device_id": device_id,
+		"device_name": device_name,
+		"flip_vertical": flip_vertical,
 		"use_simulated_feed": use_simulated_feed,
 		"transform": [
 			transform.origin.x, transform.origin.y, transform.origin.z,
@@ -51,6 +57,8 @@ static func from_dict(data: Dictionary) -> CaptureChannelSettings:
 	settings.height = int(data.get("height", 1080))
 	settings.framerate = int(data.get("framerate", 60))
 	settings.device_id = int(data.get("device_id", -1))
+	settings.device_name = String(data.get("device_name", ""))
+	settings.flip_vertical = bool(data.get("flip_vertical", false))
 	settings.use_simulated_feed = bool(data.get("use_simulated_feed", true))
 	settings.visible = bool(data.get("visible", true))
 	var t: Array = data.get("transform", [])

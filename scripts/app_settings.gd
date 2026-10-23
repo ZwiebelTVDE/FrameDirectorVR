@@ -5,20 +5,17 @@ const SETTINGS_PATH := "user://frame_director_settings.json"
 var channels: Array[CaptureChannelSettings] = []
 
 func _ready() -> void:
+	# Current Godot versions list no camera/capture devices until monitoring is on.
+	# Feeds arrive asynchronously; CaptureStage listens for camera_feeds_updated.
+	CameraServer.monitoring_feeds = true
 	if not load_from_disk():
 		_seed_default_channels()
 		save_to_disk()
 
 func _seed_default_channels() -> void:
 	channels.clear()
-	channels.append(_make_channel(1, Vector3(-1.4, 1.5, -2.4), SignalKindHDMI()))
-	channels.append(_make_channel(2, Vector3(1.4, 1.5, -2.4), SignalKindSDI()))
-
-func SignalKindHDMI() -> CaptureChannelSettings.SignalKind:
-	return CaptureChannelSettings.SignalKind.HDMI
-
-func SignalKindSDI() -> CaptureChannelSettings.SignalKind:
-	return CaptureChannelSettings.SignalKind.SDI
+	channels.append(_make_channel(1, Vector3(-1.4, 1.5, -2.4), CaptureChannelSettings.SignalKind.HDMI))
+	channels.append(_make_channel(2, Vector3(1.4, 1.5, -2.4), CaptureChannelSettings.SignalKind.SDI))
 
 func _make_channel(number: int, origin: Vector3, kind: CaptureChannelSettings.SignalKind) -> CaptureChannelSettings:
 	var channel := CaptureChannelSettings.new()

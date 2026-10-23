@@ -111,6 +111,8 @@ func _refresh_labels() -> void:
 	var kind := settings.signal_label()
 	_meta.text = "%s  ·  %s  ·  %s" % [settings.display_name, kind, settings.resolution_label()]
 	visible = settings.visible
+	# Hidden screens must not be grabbable by the mouse ray or VR pointer.
+	collision_layer = COLLISION_LAYER if settings.visible else 0
 
 func _set_texture(texture: Texture2D) -> void:
 	_material.albedo_texture = texture
