@@ -10,6 +10,8 @@ signal quit_requested
 var stage: CaptureStage
 var _list: VBoxContainer
 var _hint: Label
+var _status_labels: Dictionary = {} # CaptureChannelSettings -> Label
+var _status_timer := 0.0
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -64,7 +66,20 @@ func _ready() -> void:
 	quit_button.pressed.connect(func(): quit_requested.emit())
 	actions.add_child(quit_button)
 
+func _process(delta: float) -> void:
+	# Signal state changes on its own (cable plugged in, source switched), so
+	# keep the status lines current without rebuilding the whole panel.
+	_status_timer += delta
+	if _status_timer < 0.5:
+		return
+	_status_timer = 0.0
+	for channel in _status_labels:
+		var label: Label = _status_labels[channel]
+		if is_instance_valid(label):
+			label.text = _status_for(channel)
+
 func rebuild() -> void:
+	_status_labels.clear()
 	for child in _list.get_children():
 		child.queue_free()
 	if stage == null:
@@ -179,6 +194,11 @@ func _make_card(channel: CaptureChannelSettings, devices: Array[Dictionary]) -> 
 			channel.device_id = int(device.id)
 			channel.device_name = String(device.name)
 			channel.use_simulated_feed = false
+			# Plugin devices say what they are; keep the label in step.
+			if channel.device_name.contains("SDI In"):
+				channel.signal_kind = CaptureChannelSettings.SignalKind.SDI
+			elif channel.device_name.contains("HDMI"):
+				channel.signal_kind = CaptureChannelSettings.SignalKind.HDMI
 		channel_changed.emit(channel, true)
 	)
 	grid.add_child(device_box)
@@ -198,6 +218,7 @@ func _make_card(channel: CaptureChannelSettings, devices: Array[Dictionary]) -> 
 	status.add_theme_color_override("font_color", Color(0.42, 0.38, 0.34))
 	status.text = _status_for(channel)
 	box.add_child(status)
+	_status_labels[channel] = status
 
 	var footer := HBoxContainer.new()
 	box.add_child(footer)

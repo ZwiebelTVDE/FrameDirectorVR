@@ -35,7 +35,9 @@ func configure(channel: CaptureChannelSettings) -> void:
 		_setup_hardware()
 
 func is_live() -> bool:
-	return _camera_feed != null
+	# A device that was unplugged is removed from the CameraServer; treat it as
+	# gone so the stage can reconnect when it comes back.
+	return _camera_feed != null and CameraServer.feeds().has(_camera_feed)
 
 func _process(delta: float) -> void:
 	if settings == null or _rect == null:
@@ -50,7 +52,15 @@ func _process(delta: float) -> void:
 	elif _camera_feed != null:
 		# The datatype is only known once the driver delivers frames, and it can
 		# change if the source switches format, so keep the shader mode in sync.
-		_cam_material.set_shader_parameter("mode", _camera_feed.get_datatype())
+		var mode := _camera_feed.get_datatype()
+		if _camera_feed.has_method("get_signal_size") and _camera_feed.get_signal_size().x == 0:
+			mode = CameraFeed.FEED_NOIMAGE # plugin input with no frames yet: show dark screen
+		_cam_material.set_shader_parameter("mode", mode)
+		# Vendor plugin feeds (e.g. DELTACAST) report signal state themselves.
+		if _camera_feed.has_method("get_status"):
+			var live_status := "%s · %s" % [_camera_feed.get_status(), settings.signal_label()]
+			if live_status != status_text:
+				_set_status(live_status)
 
 func _ensure_viewport() -> void:
 	if _viewport != null:
@@ -94,7 +104,11 @@ func _setup_hardware() -> void:
 	_camera_feed = feed
 	settings.device_id = feed.get_id()
 	settings.device_name = feed.get_name()
-	_apply_best_format()
+	if feed.has_method("set_requested_format"):
+		# Plugin devices pick their own closest mode from this.
+		feed.set_requested_format(settings.width, settings.height, settings.framerate)
+	else:
+		_apply_best_format()
 	_camera_feed.set_active(true)
 
 	_tex_rgba = CameraTexture.new()
@@ -114,7 +128,10 @@ func _setup_hardware() -> void:
 
 	_viewport.size = Vector2i(settings.width, settings.height)
 	_rect.material = _cam_material
-	_set_status("%s · %s" % [feed.get_name(), settings.signal_label()])
+	if feed.has_method("get_status"):
+		_set_status("%s · %s" % [feed.get_status(), settings.signal_label()])
+	else:
+		_set_status("%s · %s" % [feed.get_name(), settings.signal_label()])
 	texture_changed.emit(output_texture)
 
 func _device_label() -> String:

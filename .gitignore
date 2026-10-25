@@ -9,3 +9,11 @@ Desktop.ini
 # Editor
 .vs/
 .idea/
+
+# Native plugin build output
+native/**/build/
+addons/capture/bin/*_mock.*
+addons/capture/bin/*.pdb
+addons/capture/bin/*.exp
+addons/capture/bin/*.lib
+addons/capture/bin/~*

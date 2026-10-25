@@ -1,0 +1,11 @@
+[configuration]
+
+entry_symbol = "capture_library_init"
+compatibility_minimum = "4.5"
+
+[libraries]
+
+windows.debug.x86_64 = "res://addons/capture/bin/capture@CAPTURE_SUFFIX@.windows.x86_64.dll"
+windows.release.x86_64 = "res://addons/capture/bin/capture@CAPTURE_SUFFIX@.windows.x86_64.dll"
+linux.debug.x86_64 = "res://addons/capture/bin/capture@CAPTURE_SUFFIX@.linux.x86_64.so"
+linux.release.x86_64 = "res://addons/capture/bin/capture@CAPTURE_SUFFIX@.linux.x86_64.so"

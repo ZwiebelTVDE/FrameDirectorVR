@@ -10,6 +10,8 @@ var feeds: Array[CaptureFeed] = []
 
 func _ready() -> void:
 	CameraServer.camera_feeds_updated.connect(_on_camera_feeds_updated)
+	CameraServer.camera_feed_added.connect(func(_id: int): _on_camera_feeds_updated())
+	CameraServer.camera_feed_removed.connect(func(_id: int): _on_camera_feeds_updated())
 	rebuild()
 
 func rebuild() -> void:
@@ -69,7 +71,10 @@ func _on_camera_feeds_updated() -> void:
 		var channel := feeds[i].settings
 		if channel == null or channel.use_simulated_feed or feeds[i].is_live():
 			continue
-		if resolve_feed(channel) != null:
+		# Either the device just came back (reconnect), or it just went away
+		# (switch to the test pattern and show "not found" until it returns).
+		var was_connected: bool = feeds[i]._camera_feed != null
+		if resolve_feed(channel) != null or was_connected:
 			feeds[i].configure(channel)
 			screens[i].configure(channel, feeds[i])
 	devices_changed.emit()

@@ -8,9 +8,30 @@ func _ready() -> void:
 	# Current Godot versions list no camera/capture devices until monitoring is on.
 	# Feeds arrive asynchronously; CaptureStage listens for camera_feeds_updated.
 	CameraServer.monitoring_feeds = true
+	_register_vendor_devices()
 	if not load_from_disk():
 		_seed_default_channels()
 		save_to_disk()
+
+## Devices Godot can't see on its own come in through the native capture plugin
+## in addons/capture/ (Media Foundation on Windows, DELTACAST cards). Each
+## backend registers its devices with the CameraServer, so they show up in the
+## device list like any other source. If the plugin isn't built, this is skipped.
+func _register_vendor_devices() -> void:
+	if Engine.has_singleton("MediaFoundation"):
+		var mf := Engine.get_singleton("MediaFoundation")
+		var mf_count: int = mf.register_devices()
+		print("Media Foundation: %d video device(s) found" % mf_count)
+		var mf_error: String = mf.get_last_error()
+		if mf_error != "":
+			push_warning(mf_error)
+	if Engine.has_singleton("Deltacast"):
+		var deltacast := Engine.get_singleton("Deltacast")
+		var count: int = deltacast.register_devices()
+		print("DELTACAST: %d input(s) registered (VideoMaster %s)" % [count, deltacast.get_api_version()])
+		var error: String = deltacast.get_last_error()
+		if error != "":
+			push_warning(error)
 
 func _seed_default_channels() -> void:
 	channels.clear()

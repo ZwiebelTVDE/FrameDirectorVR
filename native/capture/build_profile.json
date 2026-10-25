@@ -1,0 +1,18 @@
+{
+	"_comment": "Only generate the godot-cpp classes the plugin uses (plus the ones godot-cpp itself needs). Cuts build time a lot.",
+	"enabled_classes": [
+		"CameraFeed",
+		"CameraServer",
+		"ClassDBSingleton",
+		"Engine",
+		"FileAccess",
+		"Image",
+		"Mutex",
+		"OS",
+		"RenderingServer",
+		"SceneTree",
+		"Semaphore",
+		"WorkerThreadPool",
+		"XMLParser"
+	]
+}

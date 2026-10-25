@@ -34,6 +34,8 @@ func configure(channel: CaptureChannelSettings, feed: CaptureFeed) -> void:
 		_set_texture(feed.output_texture)
 	if not feed.texture_changed.is_connected(_set_texture):
 		feed.texture_changed.connect(_set_texture)
+	if not feed.status_changed.is_connected(_on_status_changed):
+		feed.status_changed.connect(_on_status_changed)
 
 func _build() -> void:
 	_collision = CollisionShape3D.new()
@@ -110,12 +112,17 @@ func _refresh_labels() -> void:
 	_watermark.text = str(settings.channel_number)
 	var kind := settings.signal_label()
 	_meta.text = "%s  ·  %s  ·  %s" % [settings.display_name, kind, settings.resolution_label()]
+	if _feed and _feed.is_live():
+		_meta.text += "\n" + _feed.status_text
 	visible = settings.visible
 	# Hidden screens must not be grabbable by the mouse ray or VR pointer.
 	collision_layer = COLLISION_LAYER if settings.visible else 0
 
 func _set_texture(texture: Texture2D) -> void:
 	_material.albedo_texture = texture
+	_refresh_labels()
+
+func _on_status_changed(_text: String) -> void:
 	_refresh_labels()
 
 func snap_settings_from_transform() -> void:
